@@ -1,0 +1,11 @@
+[build]
+target = "aarch64-linux-ohos"
+
+[target.aarch64-linux-ohos]
+ar = "${HARMONYOS_NDK_PATH}/toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-ar"
+linker = "${HARMONYOS_NDK_PATH}/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang"
+
+[env]
+CC_aarch64_linux_ohos = "${HARMONYOS_NDK_PATH}/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang"
+CXX_aarch64_linux_ohos = "${HARMONYOS_NDK_PATH}/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang++"
+CARGO_TARGET_AARCH64_LINUX_OHOS_LINKER = "${HARMONYOS_NDK_PATH}/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang"

@@ -1,0 +1,12 @@
+{
+  "string": [
+    {
+      "name": "app_name",
+      "value": "HarmonyDesk"
+    },
+    {
+      "name": "app_description",
+      "value": "鸿蒙远程桌面控制端"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "name": "harmonydesk",
+  "version": "1.0.0",
+  "description": "鸿蒙远程桌面控制端",
+  "main": "",
+  "author": "HarmonyDesk Team",
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {
+    "@ohos/hypium": "1.0.16"
+  }
+}

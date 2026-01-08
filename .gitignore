@@ -1,0 +1,30 @@
+# Rust
+Cargo.lock
+target/
+**/*.rs.bk
+*.pdb
+
+# 鸿蒙
+.harmonyos/
+entry/build/
+entry/libs/*.so
+.hvigor/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 日志
+*.log
+
+# 临时文件
+*.tmp
+*.bak

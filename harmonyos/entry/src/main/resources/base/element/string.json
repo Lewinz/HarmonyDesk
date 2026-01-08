@@ -1,0 +1,28 @@
+{
+  "string": [
+    {
+      "name": "module_desc",
+      "value": "HarmonyDesk - 鸿蒙远程桌面控制端"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "鸿蒙远程桌面控制应用"
+    },
+    {
+      "name": "EntryAbility_label",
+      "value": "HarmonyDesk"
+    },
+    {
+      "name": "app_name",
+      "value": "HarmonyDesk"
+    },
+    {
+      "name": "internet_permission_reason",
+      "value": "需要网络权限以连接远程桌面"
+    },
+    {
+      "name": "start_window_background",
+      "value": "#FFFFFF"
+    }
+  ]
+}

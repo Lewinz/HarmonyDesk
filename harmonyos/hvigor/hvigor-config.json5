@@ -1,0 +1,13 @@
+{
+  "hvigorVersion": "4.0.2",
+  "dependencies": [
+    {
+      "name": "@ohos/hvigor-ohos-plugin",
+      "version": "4.0.2"
+    },
+    {
+      "name": "@ohos/hvigor-generate-arkui-build-config-plugin",
+      "version": "4.0.2"
+    }
+  ]
+}
