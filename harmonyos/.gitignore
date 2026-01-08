@@ -1,0 +1,24 @@
+# HarmonyOS 项目忽略文件
+.DS_Store
+*.local.properties
+local.properties
+.idea/
+node_modules/
+.ohpm/
+oh_modules/
+.hvigor/
+build/
+.cxx/
+*.hap
+*.app
+libs/*.so
+
+# 测试和覆盖率
+coverage/
+*.log
+
+# 临时文件
+*.tmp
+*.bak
+*.swp
+*~

@@ -1,0 +1,9 @@
+{
+  "name": "entry",
+  "version": "1.0.0",
+  "description": "HarmonyDesk Entry Module",
+  "main": "",
+  "author": "HarmonyDesk Team",
+  "license": "MIT",
+  "dependencies": {}
+}

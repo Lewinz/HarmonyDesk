@@ -1,0 +1,20 @@
+{
+  "name": "harmonydesk",
+  "version": "1.0.0",
+  "description": "鸿蒙远程桌面控制端",
+  "scripts": {
+    "build": "hvigorw assembleHap",
+    "clean": "hvigorw clean"
+  },
+  "keywords": [
+    "harmonyos",
+    "remote-desktop",
+    "rustdesk"
+  ],
+  "author": "HarmonyDesk Team",
+  "license": "MIT",
+  "devDependencies": {
+    "@ohos/hvigor-ohos-plugin": "4.0.2",
+    "@ohos/hvigor-generate-arkui-build-config-plugin": "4.0.2"
+  }
+}

@@ -1,0 +1,12 @@
+# IDE 默认忽略的文件
+*.iml
+.idea/misc.xml
+.idea/compiler.xml
+.idea/libraries
+.idea/modules.xml
+.idea/.name
+.idea/deploymentTargetDropDown.xml
+.idea/gradle.xml
+.idea/jarRepositories.xml
+.idea/misc.xml
+.idea/vcs.xml
