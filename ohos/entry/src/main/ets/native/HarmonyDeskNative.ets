@@ -5,7 +5,8 @@
  * for HarmonyOS remote desktop functionality.
  */
 
-import nativeModule from '@ohos.module.harmonydesk_native';
+// Import the native module
+import nativeModule from 'libharmonydesk.so';
 
 // Native module interface
 export interface HarmonyDeskNative {
@@ -53,8 +54,117 @@ export interface ModuleInfo {
   initialized: boolean;
 }
 
+// Wrapper class that implements HarmonyDeskNative interface
+class NativeModuleWrapper implements HarmonyDeskNative {
+  init(): number {
+    try {
+      console.info('[HarmonyDeskNative] Calling nativeModule.init()...');
+      const result: number = nativeModule.init();
+      console.info('[HarmonyDeskNative] nativeModule.init() returned:', result);
+      return result;
+    } catch (e) {
+      console.error('[HarmonyDeskNative] init error:', e);
+      console.error('[HarmonyDeskNative] Error type:', typeof e);
+      console.error('[HarmonyDeskNative] Error string:', String(e));
+      if (e instanceof Error) {
+        console.error('[HarmonyDeskNative] Error message:', e.message);
+        console.error('[HarmonyDeskNative] Error stack:', e.stack);
+      }
+      return -1;
+    }
+  }
+
+  setServerConfig(idServer: string, relayServer: string, forceRelay: boolean, key: string): number {
+    try {
+      const result: number = nativeModule.setServerConfig(idServer, relayServer, forceRelay, key);
+      return result;
+    } catch (e) {
+      console.error('[HarmonyDeskNative] setServerConfig error: ' + JSON.stringify(e));
+      return -1;
+    }
+  }
+
+  connect(deskId: string, password: string): number {
+    try {
+      const result: number = nativeModule.connect(deskId, password);
+      return result;
+    } catch (e) {
+      console.error('[HarmonyDeskNative] connect error: ' + JSON.stringify(e));
+      return -1;
+    }
+  }
+
+  disconnect(): void {
+    try {
+      nativeModule.disconnect();
+    } catch (e) {
+      console.error('[HarmonyDeskNative] disconnect error: ' + JSON.stringify(e));
+    }
+  }
+
+  cleanup(): void {
+    try {
+      nativeModule.cleanup();
+    } catch (e) {
+      console.error('[HarmonyDeskNative] cleanup error: ' + JSON.stringify(e));
+    }
+  }
+
+  getConnectionStatus(): number {
+    try {
+      const result: number = nativeModule.getConnectionStatus();
+      return result;
+    } catch (e) {
+      console.error('[HarmonyDeskNative] getConnectionStatus error: ' + JSON.stringify(e));
+      return 0;
+    }
+  }
+
+  sendKeyEvent(keyCode: number, pressed: boolean): void {
+    try {
+      nativeModule.sendKeyEvent(keyCode, pressed);
+    } catch (e) {
+      console.error('[HarmonyDeskNative] sendKeyEvent error: ' + JSON.stringify(e));
+    }
+  }
+
+  sendMouseMove(x: number, y: number): void {
+    try {
+      nativeModule.sendMouseMove(x, y);
+    } catch (e) {
+      console.error('[HarmonyDeskNative] sendMouseMove error: ' + JSON.stringify(e));
+    }
+  }
+
+  sendMouseClick(button: number, pressed: boolean): void {
+    try {
+      nativeModule.sendMouseClick(button, pressed);
+    } catch (e) {
+      console.error('[HarmonyDeskNative] sendMouseClick error: ' + JSON.stringify(e));
+    }
+  }
+
+  getVideoFrame(): VideoFrame | null {
+    try {
+      const frame: ESObject | null = nativeModule.getVideoFrame();
+      if (frame !== null && typeof frame === 'object') {
+        return {
+          width: (frame as ESObject)['width'] as number,
+          height: (frame as ESObject)['height'] as number,
+          data: (frame as ESObject)['data'] as ArrayBuffer,
+          timestamp: (frame as ESObject)['timestamp'] as number
+        };
+      }
+      return null;
+    } catch (e) {
+      console.error('[HarmonyDeskNative] getVideoFrame error: ' + JSON.stringify(e));
+      return null;
+    }
+  }
+}
+
 // Module loading state
-let nativeModuleInstance: HarmonyDeskNative | null = null;
+let nativeModuleInstance: NativeModuleWrapper | null = null;
 let isInitialized = false;
 let initPromise: Promise<boolean> | null = null;
 
@@ -73,70 +183,37 @@ export async function initHarmonyDesk(): Promise<boolean> {
   initPromise = new Promise<boolean>((resolve, reject) => {
     try {
       console.info('[HarmonyDeskNative] Loading native module...');
+      console.info('[HarmonyDeskNative] nativeModule type:', typeof nativeModule);
+      console.info('[HarmonyDeskNative] nativeModule:', nativeModule);
 
-      // Try to load the native module
-      if (nativeModule && typeof nativeModule.init === 'function') {
-        console.info('[HarmonyDeskNative] Native module found, initializing...');
+      // Create wrapper instance
+      nativeModuleInstance = new NativeModuleWrapper();
+      console.info('[HarmonyDeskNative] Wrapper instance created');
 
-        // Create a wrapper that implements HarmonyDeskNative interface
-        nativeModuleInstance = {
-          init: (): number => {
-            return nativeModule.init() || 0;
-          },
-          setServerConfig: (idServer: string, relayServer: string, forceRelay: boolean, key: string): number => {
-            return nativeModule.setServerConfig(idServer, relayServer, forceRelay, key) || 0;
-          },
-          connect: (deskId: string, password: string): number => {
-            return nativeModule.connect(deskId, password) || 0;
-          },
-          disconnect: (): void => {
-            nativeModule.disconnect();
-          },
-          cleanup: (): void => {
-            nativeModule.cleanup();
-          },
-          getConnectionStatus: (): number => {
-            return nativeModule.getConnectionStatus() || 0;
-          },
-          sendKeyEvent: (keyCode: number, pressed: boolean): void => {
-            nativeModule.sendKeyEvent(keyCode, pressed);
-          },
-          sendMouseMove: (x: number, y: number): void => {
-            nativeModule.sendMouseMove(x, y);
-          },
-          sendMouseClick: (button: number, pressed: boolean): void => {
-            nativeModule.sendMouseClick(button, pressed);
-          },
-          getVideoFrame: (): VideoFrame | null => {
-            const frame = nativeModule.getVideoFrame();
-            if (frame) {
-              return {
-                width: frame.width,
-                height: frame.height,
-                data: frame.data,
-                timestamp: frame.timestamp
-              };
-            }
-            return null;
-          }
-        };
-
-        // Initialize the native module
-        const result = nativeModuleInstance.init();
-        if (result === 0) {
-          isInitialized = true;
-          console.info('[HarmonyDeskNative] Native module initialized successfully');
-          resolve(true);
-        } else {
-          console.error('[HarmonyDeskNative] Native module initialization failed: ' + result);
-          reject(new Error('Native module initialization failed'));
-        }
+      // Initialize the native module
+      const result: number = nativeModuleInstance.init();
+      console.info('[HarmonyDeskNative] init() returned:', result);
+      
+      if (result === 0) {
+        isInitialized = true;
+        console.info('[HarmonyDeskNative] Native module initialized successfully');
+        resolve(true);
+      } else if (result === 1) {
+        // Already initialized
+        isInitialized = true;
+        console.info('[HarmonyDeskNative] Native module already initialized');
+        resolve(true);
       } else {
-        console.error('[HarmonyDeskNative] Native module not found');
-        reject(new Error('Native module not found'));
+        console.error('[HarmonyDeskNative] Native module initialization failed with code: ' + result);
+        reject(new Error('Native module initialization failed with code: ' + result));
       }
     } catch (error) {
-      console.error('[HarmonyDeskNative] Failed to load native module: ' + error);
+      console.error('[HarmonyDeskNative] Failed to initialize:', error);
+      console.error('[HarmonyDeskNative] Error type:', typeof error);
+      if (error instanceof Error) {
+        console.error('[HarmonyDeskNative] Error message:', error.message);
+        console.error('[HarmonyDeskNative] Error stack:', error.stack);
+      }
       reject(error);
     }
   });
@@ -152,7 +229,7 @@ export async function getNativeModule(): Promise<HarmonyDeskNative | null> {
     await initHarmonyDesk();
     return nativeModuleInstance;
   } catch (error) {
-    console.error('[HarmonyDeskNative] Failed to get native module: ' + error);
+    console.error('[HarmonyDeskNative] Failed to get native module: ' + JSON.stringify(error));
     return null;
   }
 }
@@ -169,7 +246,7 @@ export function isNativeModuleLoaded(): boolean {
  */
 export function getModuleInfo(): ModuleInfo {
   const info: ModuleInfo = {
-    usingMock: false,
+    usingMock: false, // Using real native module
     initialized: isInitialized
   };
   return info;

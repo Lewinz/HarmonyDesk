@@ -155,20 +155,76 @@ impl IdServerClient {
 
     /// 连接到 ID 服务器
     pub async fn connect(&mut self) -> Result<(), ProtocolError> {
-        log::info!("Connecting to ID server: {}", self.server_addr);
+        log::info!("=== ID 服务器连接开始 ===");
+        log::info!("目标服务器: {}", self.server_addr);
+        log::info!("本地 ID: {}", self.local_id);
 
         // 解析服务器地址
-        let addr: SocketAddr = self
-            .server_addr
-            .parse()
-            .map_err(|_| ProtocolError::HandshakeFailed("Invalid server address".to_string()))?;
+        let addr: SocketAddr = match self.server_addr.parse() {
+            Ok(a) => {
+                log::info!("服务器地址解析成功: {}", a);
+                a
+            }
+            Err(e) => {
+                log::error!("❌ 服务器地址解析失败: '{}' - 错误: {}", self.server_addr, e);
+                return Err(ProtocolError::HandshakeFailed(format!(
+                    "Invalid server address: '{}' - parse error: {}",
+                    self.server_addr, e
+                )));
+            }
+        };
+
+        log::info!("服务器 IP: {}:{}", addr.ip(), addr.port());
 
         // 绑定本地端口
-        let socket = UdpSocket::bind("0.0.0.0:0").await?;
-        socket.connect(addr).await?;
+        let socket = match UdpSocket::bind("0.0.0.0:0").await {
+            Ok(s) => {
+                let local_addr = match s.local_addr() {
+                    Ok(a) => a.to_string(),
+                    Err(e) => format!("(获取失败: {})", e),
+                };
+                log::info!("✓ 本地 UDP socket 绑定成功: {}", local_addr);
+                s
+            }
+            Err(e) => {
+                log::error!("❌ 绑定本地 UDP socket 失败: {}", e);
+                return Err(ProtocolError::HandshakeFailed(format!(
+                    "Failed to bind local socket: {}", e
+                )));
+            }
+        };
 
-        log::info!("Connected to ID server from local addr: {}", socket.local_addr()?);
+        // 连接到远程服务器
+        log::info!("正在连接到 {}:{}...", addr.ip(), addr.port());
+        match socket.connect(addr).await {
+            Ok(_) => {
+                log::info!("✓ 成功连接到 ID 服务器");
+                if let Ok(local_addr) = socket.local_addr() {
+                    log::info!("  本地地址: {}", local_addr);
+                }
+            }
+            Err(e) => {
+                log::error!("❌ 连接到 ID 服务器失败");
+                log::error!("  目标地址: {}:{}", addr.ip(), addr.port());
+                log::error!("  错误类型: {}", e);
+                log::error!("  错误详情: {:?}", e.kind());
+
+                // 检查是否是网络不可达
+                if e.kind() == std::io::ErrorKind::NetworkUnreachable {
+                    log::error!("  原因: 网络不可达 - 请检查网络连接");
+                } else if e.kind() == std::io::ErrorKind::ConnectionRefused {
+                    log::error!("  原因: 连接被拒绝 - 服务器可能不可用");
+                } else if e.kind() == std::io::ErrorKind::TimedOut {
+                    log::error!("  原因: 连接超时 - 网络延迟过高或防火墙阻止");
+                }
+
+                return Err(ProtocolError::HandshakeFailed(format!(
+                    "Failed to connect to {}:{} - {}", addr.ip(), addr.port(), e)));
+            }
+        }
+
         self.socket = Some(socket);
+        log::info!("=== ID 服务器连接成功 ===");
 
         Ok(())
     }
@@ -197,12 +253,16 @@ impl IdServerClient {
 
     /// 请求连接到远程 ID
     pub async fn request_connection(&self, remote_id: &str) -> Result<SocketAddr, ProtocolError> {
+        log::info!("=== 请求远程设备信息 ===");
+        log::info!("远程设备 ID: {}", remote_id);
+
         let socket = self
             .socket
             .as_ref()
-            .ok_or_else(|| ProtocolError::HandshakeFailed("Not connected".to_string()))?;
-
-        log::info!("Requesting connection to remote ID: {}", remote_id);
+            .ok_or_else(|| {
+                log::error!("❌ 未连接到 ID 服务器");
+                ProtocolError::HandshakeFailed("Not connected to ID server".to_string())
+            })?;
 
         // 构造连接请求包
         let mut payload = BytesMut::new();
@@ -213,33 +273,78 @@ impl IdServerClient {
         let packet = Packet::new(MessageType::ConnectionRequest, payload.to_vec());
         let data = packet.serialize();
 
-        socket.send(&data).await?;
+        log::info!("发送连接请求到 ID 服务器 ({} 字节)", data.len());
+
+        match socket.send(&data).await {
+            Ok(n) => log::info!("✓ 发送成功 ({} 字节)", n),
+            Err(e) => {
+                log::error!("❌ 发送失败: {}", e);
+                return Err(ProtocolError::Io(e));
+            }
+        }
 
         // 等待响应
+        log::info!("等待 ID 服务器响应 (超时 10 秒)...");
         let mut buf = vec![0u8; 1024];
         let timeout = tokio::time::timeout(Duration::from_secs(10), socket.recv(&mut buf)).await;
 
         match timeout {
             Ok(Ok(n)) => {
-                let response = Packet::deserialize(&buf[..n])?;
+                log::info!("✓ 收到响应 ({} 字节)", n);
+
+                let response = match Packet::deserialize(&buf[..n]) {
+                    Ok(r) => r,
+                    Err(e) => {
+                        log::error!("❌ 解析响应包失败: {}", e);
+                        return Err(ProtocolError::HandshakeFailed(format!(
+                            "Failed to parse response: {}", e
+                        )));
+                    }
+                };
+
+                log::info!("响应消息类型: {:?}", response.msg_type);
+
                 if response.msg_type != MessageType::ConnectionResponse {
+                    log::error!("❌ 意外的响应类型: {:?}", response.msg_type);
                     return Err(ProtocolError::HandshakeFailed(
-                        "Unexpected response type".to_string(),
+                        format!("Unexpected response type: {:?}", response.msg_type),
                     ));
                 }
 
                 // 解析对端地址
                 let mut data = BytesMut::from(&response.payload[..]);
                 let status = data.get_u8();
+
                 if status != 0 {
+                    log::error!("❌ 远程设备未找到 (状态码: {})", status);
+                    log::error!("  设备 ID: {}", remote_id);
+                    log::error!("  可能的原因:");
+                    log::error!("    1. 设备 ID 不存在");
+                    log::error!("    2. 设备离线");
+                    log::error!("    3. 设备未在 RustDesk 网络中注册");
                     return Err(ProtocolError::PeerNotFound);
                 }
 
+                log::info!("✓ 远程设备找到");
+
                 // 简化：返回服务器地址，实际会进行 NAT 穿透
-                Ok(socket.peer_addr()?)
+                let peer_addr = socket.peer_addr()?;
+                log::info!("对端地址: {}", peer_addr);
+
+                Ok(peer_addr)
             }
-            Ok(Err(e)) => Err(ProtocolError::Io(e)),
-            Err(_) => Err(ProtocolError::Timeout),
+            Ok(Err(e)) => {
+                log::error!("❌ 接收响应时发生 IO 错误: {}", e);
+                Err(ProtocolError::Io(e))
+            }
+            Err(_) => {
+                log::error!("❌ 等待响应超时 (10 秒)");
+                log::error!("  可能的原因:");
+                log::error!("    1. 网络延迟过高");
+                log::error!("    2. ID 服务器负载过高");
+                log::error!("    3. 防火墙阻止了响应");
+                Err(ProtocolError::Timeout)
+            }
         }
     }
 

@@ -13,9 +13,9 @@ struct Index {
   @State quickPassword: string = '';
   @State relayEnabled: boolean = true;
   @State directEnabled: boolean = true;
-  @State relayHost: string = '';
-  @State apiHost: string = '';
-  @State apiKey: string = '';
+  @State relayHost: string = 'relay.rustdesk.org';
+  @State apiHost: string = 'https://rustdesk.com/api';
+  @State apiKey: string = '123456';
   @State clipboardSync: boolean = true;
   @State fileTransfer: boolean = true;
   @State loadError: string = '';
@@ -51,20 +51,18 @@ struct Index {
             this.devicesTab()
           }
           .tabBar('设备')
-          .padding({ bottom: 16 })
           TabContent() {
             this.settingsTab()
           }
           .tabBar('设置')
-          .padding({ bottom: 16 })
         }
         .barPosition(BarPosition.End)
         .onChange((index: number) => {
           this.activeTab = index;
         })
-        .height('100%')
+        .layoutWeight(1)
       }
-      .padding({ left: 16, right: 16, top: 16 })
+      .padding({ left: 4, right: 4, top: 0 })
       .height('100%')
       .width('100%')
 
@@ -529,35 +527,67 @@ struct Index {
   }
 
   private openSession(): void {
-    if (!this.quickId) {
+    console.info('[Index] openSession called, quickId:', this.quickId);
+    
+    if (!this.quickId || this.quickId.trim().length === 0) {
       this.loadError = '请输入设备 ID';
+      console.warn('[Index] quickId is empty');
       return;
     }
+    
     // 保存到列表
     this.saveDeviceToList(this.quickId, this.quickId);
 
+    interface SessionParams {
+      id: string;
+      name: string;
+      status: string;
+      password: string;
+      viewOnly: string;
+    }
+    
+    const params: SessionParams = {
+      id: this.quickId.trim(),
+      name: this.quickId.trim(),
+      status: 'Unknown',
+      password: this.quickPassword || '',
+      viewOnly: '0'
+    };
+    
+    console.info('[Index] Pushing to Session with params:', JSON.stringify(params));
+    
     router.pushUrl({
       url: 'pages/Session',
-      params: {
-        id: this.quickId,
-        name: this.quickId,
-        status: 'Unknown',
-        password: this.quickPassword,
-        viewOnly: '0'
-      }
+      params: params
+    }).catch((error: Error) => {
+      console.error('[Index] pushUrl failed:', error);
+      this.loadError = `跳转失败: ${error.message || String(error)}`;
     });
   }
 
   private openDeviceSession(device: DeviceItem): void {
+    interface SessionParams {
+      id: string;
+      name: string;
+      status: string;
+      password: string;
+      viewOnly: string;
+    }
+    
+    const params: SessionParams = {
+      id: device.id,
+      name: device.name,
+      status: device.status,
+      password: '',
+      viewOnly: '0'
+    };
+    
     router.pushUrl({
       url: 'pages/Session',
-      params: {
-        id: device.id,
-        name: device.name,
-        status: device.status,
-        password: '',
-        viewOnly: '0'
-      }
+      params: params
+    }).catch((error: Error) => {
+      console.error('[Index] pushUrl failed:', error);
+      this.loadError = `跳转失败: ${error.message || String(error)}`;
     });
   }
 

@@ -1,6 +1,20 @@
 {
   "app": {
-    "signingConfigs": [],
+    "signingConfigs": [
+      {
+        "name": "default",
+        "type": "HarmonyOS",
+        "material": {
+          "certpath": "/Users/lewin/.ohos/config/default_ohos_5E22CMXqFKK7whjPgrXjJ-Rg9WTWMvGP-0JP5z8PW34=.cer",
+          "keyAlias": "debugKey",
+          "keyPassword": "0000001A96ECCF5F7EE9DB5043A4B8128533504F5B927B2D406CEB678D5DD7DECD66D4FB64165029C4D5",
+          "profile": "/Users/lewin/.ohos/config/default_ohos_5E22CMXqFKK7whjPgrXjJ-Rg9WTWMvGP-0JP5z8PW34=.p7b",
+          "signAlg": "SHA256withECDSA",
+          "storeFile": "/Users/lewin/.ohos/config/default_ohos_5E22CMXqFKK7whjPgrXjJ-Rg9WTWMvGP-0JP5z8PW34=.p12",
+          "storePassword": "0000001ACFDB0AF86347F37B3E16EC3CCAD277C8D272175ABC50C13E242F40E3190E1E856D45676D8790"
+        }
+      }
+    ],
     "products": [
       {
         "name": "default",
