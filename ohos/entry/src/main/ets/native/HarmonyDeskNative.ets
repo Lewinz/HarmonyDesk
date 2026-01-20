@@ -13,6 +13,9 @@ export interface HarmonyDeskNative {
   // Initialize the native module
   init(): number;
 
+  // Initialize debug mode (set up panic hook)
+  initDebug(): number;
+
   // Configure server settings
   setServerConfig(idServer: string, relayServer: string, forceRelay: boolean, key: string): number;
 
@@ -39,6 +42,17 @@ export interface HarmonyDeskNative {
 
   // Get latest video frame
   getVideoFrame(): VideoFrame | null;
+
+  // ===== Debug functions =====
+
+  // Get all Rust logs
+  getLogs(): string;
+
+  // Get last error or panic message
+  getLastError(): string | null;
+
+  // Clear all logs
+  clearLogs(): void;
 }
 
 export interface VideoFrame {
@@ -161,6 +175,43 @@ class NativeModuleWrapper implements HarmonyDeskNative {
       return null;
     }
   }
+
+  // ===== Debug functions =====
+
+  getLogs(): string {
+    try {
+      const logs: string = nativeModule.getLogs();
+      return logs;
+    } catch (e) {
+      console.error('[HarmonyDeskNative] getLogs error: ' + JSON.stringify(e));
+      return '[HarmonyDeskNative] Failed to get logs: ' + JSON.stringify(e);
+    }
+  }
+
+  getLastError(): string | null {
+    try {
+      const error: ESObject | null = nativeModule.getLastError();
+      if (error === null || error === undefined) {
+        return null;
+      }
+      const errorStr = String(error);
+      if (errorStr === 'null' || errorStr === 'undefined') {
+        return null;
+      }
+      return errorStr;
+    } catch (e) {
+      console.error('[HarmonyDeskNative] getLastError error: ' + JSON.stringify(e));
+      return JSON.stringify(e);
+    }
+  }
+
+  clearLogs(): void {
+    try {
+      nativeModule.clearLogs();
+    } catch (e) {
+      console.error('[HarmonyDeskNative] clearLogs error: ' + JSON.stringify(e));
+    }
+  }
 }
 
 // Module loading state
@@ -250,4 +301,55 @@ export function getModuleInfo(): ModuleInfo {
     initialized: isInitialized
   };
   return info;
+}
+
+/**
+ * Debug information interface
+ */
+export interface DebugInfo {
+  initialized: boolean;
+  logs: string;
+  lastError: string;
+  connectionStatus: number;
+}
+
+/**
+ * Get debug information from the native module
+ * Useful for troubleshooting Rust layer errors
+ */
+export async function getDebugInfo(): Promise<DebugInfo> {
+  const module = await getNativeModule();
+
+  if (module === null) {
+    return {
+      initialized: false,
+      logs: 'Native module not initialized',
+      lastError: 'Native module not initialized',
+      connectionStatus: 0
+    };
+  }
+
+  const logs = module.getLogs();
+  const lastError = module.getLastError();
+
+  return {
+    initialized: isInitialized,
+    logs: logs,
+    lastError: lastError ?? 'No error',
+    connectionStatus: module.getConnectionStatus()
+  };
+}
+
+/**
+ * Print debug info to console (useful for hdc shell hidumper)
+ */
+export async function printDebugInfo(): Promise<void> {
+  const info = await getDebugInfo();
+  console.info('========== HarmonyDesk Debug Info ==========');
+  console.info('Initialized:', info.initialized);
+  console.info('Connection Status:', info.connectionStatus);
+  console.info('Last Error:', info.lastError);
+  console.info('--- Logs ---');
+  console.info(info.logs);
+  console.info('=============================================');
 }
